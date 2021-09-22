@@ -26,7 +26,7 @@ namespace Michsky.UI.ModernUIPack
 
             if (playType == PlayType.CLICK)
             {
-                eventButton = gameObject.GetComponent<Button>();
+                if(!eventButton) eventButton = gameObject.GetComponent<Button>();
                 eventButton.onClick.AddListener(ClickEvent);
             }
         }

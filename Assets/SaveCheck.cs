@@ -7,7 +7,8 @@ using UnityEngine;
 public class SaveCheck : MonoBehaviour
 {
     private const string CHECKNUMBER_PREFS = "CheckNumber";
-    public GameObject button;
+    public GameObject saveButton;
+    public GameObject shareButton;
     [Header("Texts")]
     public TextMeshProUGUI fromText;
     public TextMeshProUGUI valueText;
@@ -15,50 +16,66 @@ public class SaveCheck : MonoBehaviour
     public TextMeshProUGUI checkNumberText;
     public TextMeshProUGUI checkNumberText2;
     public TextMeshProUGUI reasonText;
-    public string from = "أحمد غسان عبدالله قدورة";
-    public string value = "$2,134,900.00";
-    public string reason = "تطبيق للهواتف الذكية يدعى بطاطا و البندورة 5 بمية و الباذنجان غالي و أنا بس قاعد بجرب بال3 أسطر يا حبيبي يا فادي أتمنى لك يوما سعيدًا";
+    public string from = "";
+    public string value = "";
+    public string reason = "";
     public RectTransform receiptArea;
+    private string filePath = "";
+    int checkNumberInt = 1;
     public void Save()
     {
-        int checkNumberInt = PlayerPrefs.GetInt(CHECKNUMBER_PREFS, 1);
-        checkNumberText.text = checkNumberInt.ToString("00");
-        checkNumberText2.text = checkNumberInt.ToString("00");
-        fromText.text = from;
-        valueText.text = value;
-        reasonText.text = reason;
-        dateText.text = DateTime.Now.ToString("yyyy/MM/dd");
         PlayerPrefs.SetInt(CHECKNUMBER_PREFS, ++checkNumberInt);
         StartCoroutine(TakeScreenshotAndShare());
     }
     private IEnumerator TakeScreenshotAndShare()
     {
-        button.SetActive(false);
         yield return new WaitForEndOfFrame();
         Rect rt = GetRect(receiptArea);
         Texture2D receiptImage = new Texture2D(Mathf.FloorToInt(rt.width), Mathf.FloorToInt(rt.height), TextureFormat.RGB24, false);
         receiptImage.ReadPixels(rt, 0, 0);
         receiptImage.Apply();
         Destroy(receiptImage);
-        button.SetActive(true);
         string filename = "receipt_no_" + checkNumberText.text + ".png";
 #if UNITY_EDITOR
-        string filePath = Path.Combine(Application.persistentDataPath, filename);
+        filePath = Path.Combine(Application.persistentDataPath, filename);
         File.WriteAllBytes(filePath, receiptImage.EncodeToPNG());
-        Debug.Log(filePath);
-        yield break;
-#endif
+        saveButton.SetActive (false);
+        shareButton.SetActive (true);
+#else
         NativeGallery.Permission permission = NativeGallery.SaveImageToGallery(receiptImage, "Receipts", filename, (success, path) =>
         {
             if (success)
             {
-                new NativeShare().AddFile(path)
-                    .SetSubject("Receipt from " + from).SetText("We recieved " + value + ", from: " + from)
-                    .SetCallback((result, shareTarget) => Debug.Log("Share result: " + result + ", selected app: " + shareTarget))
-                    .Share();
+                filePath = path;
+                saveButton.SetActive (false);
+                shareButton.SetActive (true);
             }
         });
         Debug.Log("Permission result: " + permission);
+#endif
+    }
+    public void ShareBtn () {
+        if (string.IsNullOrEmpty (filePath))
+            return;
+#if UNITY_EDITOR
+        Debug.Log (filePath);
+#else
+        new NativeShare ().AddFile (filePath)
+                    .SetSubject ("سند قبض من" + from).SetText ("استلمنا مبلغ " + value + "، من:" + from)
+                    .SetCallback ((result, shareTarget) => Debug.Log ("Share result: " + result + ", selected app: " + shareTarget))
+                    .Share ();
+#endif
+    }
+    public void SetTexts () {
+        checkNumberInt = PlayerPrefs.GetInt (CHECKNUMBER_PREFS, 1);
+        checkNumberText.text = checkNumberInt.ToString ("00");
+        checkNumberText2.text = checkNumberInt.ToString ("00");
+        fromText.text = from;
+        valueText.text = value;
+        reasonText.text = reason;
+        saveButton.SetActive (true);
+        shareButton.SetActive (false);
+        dateText.text = DateTime.Now.ToString ("yyyy/MM/dd");
     }
     Rect GetRect(RectTransform rectTransform)
     {
@@ -77,5 +94,8 @@ public class SaveCheck : MonoBehaviour
     public void SetReceipantName(string value)
     {
         from = value;
+    }
+    public void SetReasonValue (string value) {
+        reason = value;
     }
 }
